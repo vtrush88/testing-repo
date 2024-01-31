@@ -20,6 +20,7 @@ Lido Frontend Template is a project template for developing Lido applications. I
 Step 0. Read `DOCS.md` in the root of the project
 
 Step 1. Copy the contents of `.env` to `.env.local`
+Step 2. Paste the contents of `.env` to `.env.local`
 
 ```bash
 cp .env .env.local

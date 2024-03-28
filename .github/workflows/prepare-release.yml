@@ -11,6 +11,7 @@ jobs:
   prepare-release:
     name: Prepare release and create pre-release PR
     runs-on: ubuntu-latest
+    environment: prepare release
     steps:
       - name: Checkout
         uses: actions/checkout@v3

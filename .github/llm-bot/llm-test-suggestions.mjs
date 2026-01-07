@@ -78,10 +78,12 @@ ${f.patch}
 
 // 4) Call OpenAI
 const client = new OpenAI({ apiKey: OPENAI_API_KEY });
-
+const preferred = ["gpt-5", "gpt-4.1-mini", "gpt-4o-mini"];
+const models = await client.models.list(); // GET /v1/models
+const available = new Set(models.data.map(m => m.id));
+const chosenModel = preferred.find(m => available.has(m)) || "gpt-4o-mini";
 const response = await client.responses.create({
-  // Pick a model available in your org; mini is usually enough for PR comments.
-  model: "gpt-5.2-mini",
+  model: chosenModel,
   input: prompt,
 });
 

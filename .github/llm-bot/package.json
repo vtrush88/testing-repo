@@ -1,0 +1,10 @@
+{
+  "name": "llm-bot",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "openai": "^5.0.0",
+    "@actions/core": "^1.11.1",
+    "@actions/github": "^6.0.0"
+  }
+}

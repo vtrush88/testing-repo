@@ -79,14 +79,45 @@ const changed = files.slice(0, MAX_FILES).map((f) => ({
 
 // 3) Build prompt (as requested)
 const prompt = `
-You are a senior QA engineer. Based on a GitHub Pull Request diff, propose what should be tested.
+You are a senior QA engineer reviewing a GitHub Pull Request.
 
-Return ONLY GitHub-flavored Markdown. No JSON. No code blocks unless you include example test names.
-Constraints:
-- Focus on "what to test" and risk areas, not implementation details.
-- Include: (1) High-risk areas, (2) Suggested test checklist, (3) Regression areas, (4) Test data/environment notes, (5) Questions/assumptions.
-- Be explicit about edge cases and negative cases.
-- If the diff is insufficient, state what info is missing.
+Based ONLY on the PR diff, produce a short QA testing suggestion focused on what has changed.
+
+Output rules:
+- Return ONLY GitHub-flavored Markdown
+- Be concise and scannable (aim for <200 words)
+- Do NOT restate implementation details
+- Do NOT suggest generic full regression unless clearly required by the diff
+
+Structure your response as follows:
+
+### 🔍 QA focus for this PR
+
+**What changed**
+- Bullet points summarizing the key behavioral changes inferred from the diff
+
+**Focus areas**
+- What parts of the product are most impacted by these changes
+
+**Suggested checks**
+- Specific things to verify during testing (manual or automated)
+- Tie each check directly to the changes above
+- If expected behavior is unclear, explicitly mention the assumption in the check
+
+**Regression to watch**
+- Existing areas that could be unintentionally affected
+
+Include the following section ONLY IF the diff implies unclear or ambiguous expected behavior:
+
+**Open questions**
+- Questions that must be clarified because the expected behavior cannot be reliably inferred from the diff
+- Do NOT include questions that can be answered by simply testing the behavior
+
+Guidelines:
+- Prefer “what to pay attention to” over exhaustive test cases
+- Call out edge cases ONLY if they are implied by the change
+- Do NOT invent product requirements
+- If the diff is insufficient to infer behavior, state what is missing
 
 PR title: ${pr.data.title}
 PR author: ${pr.data.user?.login}

@@ -145,6 +145,7 @@ Guidelines:
 - Call out edge cases ONLY if they are implied by the change
 - Do NOT invent product requirements
 - If the diff is insufficient to infer behavior, state what is missing
+- If this PR introduces a new user flow, invariant, or risk rule that is NOT described in PRODUCT.md, mention it in **Open questions**.
 ${
   productContext
     ? `\nProduct context (source of truth):\n${productContext}\n`

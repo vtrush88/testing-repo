@@ -1,6 +1,8 @@
 import OpenAI from "openai";
 import core from "@actions/core";
 import github from "@actions/github";
+import fs from "node:fs/promises";
+import path from "node:path";
 
 function truncate(str, max) {
   if (!str) return "";
@@ -10,6 +12,22 @@ function truncate(str, max) {
 function toSafePatch(patch) {
   // GitHub sometimes omits patches for big diffs; handle gracefully
   return patch || "(no patch provided by GitHub for this file)";
+}
+
+async function readProductContext() {
+  try {
+    const repoRoot = process.cwd();
+    const productPath = path.join(repoRoot, "PRODUCT.md");
+    const raw = await fs.readFile(productPath, "utf8");
+
+    // Keep prompt compact; PRODUCT.md should be short, but guard anyway
+    const MAX_PRODUCT_CHARS = 6000;
+    return raw.length > MAX_PRODUCT_CHARS
+      ? raw.slice(0, MAX_PRODUCT_CHARS) + "\n…(truncated)"
+      : raw;
+  } catch {
+    return ""; // If PRODUCT.md doesn't exist or can't be read, continue without it
+  }
 }
 
 async function chooseModel(client) {
@@ -36,7 +54,10 @@ async function chooseModel(client) {
     return chosen || "gpt-4o-mini";
   } catch (err) {
     // If listing models fails (network, auth, etc.), fall back to a sensible default
-    console.error("Failed to list models, falling back to default:", err?.message || err);
+    console.error(
+      "Failed to list models, falling back to default:",
+      err?.message || err
+    );
     return "gpt-4o-mini";
   }
 }
@@ -53,6 +74,9 @@ if (!REPO) throw new Error("Missing REPO");
 
 const [owner, repo] = REPO.split("/");
 const octokit = github.getOctokit(GITHUB_TOKEN);
+
+// Read PRODUCT.md (optional)
+const productContext = await readProductContext();
 
 // 1) Fetch PR metadata
 const pr = await octokit.rest.pulls.get({ owner, repo, pull_number: PR_NUMBER });
@@ -77,11 +101,14 @@ const changed = files.slice(0, MAX_FILES).map((f) => ({
   patch: truncate(toSafePatch(f.patch), MAX_PATCH_CHARS_PER_FILE),
 }));
 
-// 3) Build prompt (as requested)
+// 3) Build prompt (as requested) + product context (if present)
 const prompt = `
 You are a senior QA engineer reviewing a GitHub Pull Request.
 
-Based ONLY on the PR diff, produce a short QA testing suggestion focused on what has changed.
+Based ONLY on the PR diff${
+  productContext ? " and the Product context below" : ""
+}, produce a short QA testing suggestion focused on what has changed.
+${productContext ? "Do NOT invent product requirements beyond the diff + Product context.\n" : ""}
 
 Output rules:
 - Return ONLY GitHub-flavored Markdown
@@ -118,7 +145,11 @@ Guidelines:
 - Call out edge cases ONLY if they are implied by the change
 - Do NOT invent product requirements
 - If the diff is insufficient to infer behavior, state what is missing
-
+${
+  productContext
+    ? `\nProduct context (source of truth):\n${productContext}\n`
+    : ""
+}
 PR title: ${pr.data.title}
 PR author: ${pr.data.user?.login}
 Base: ${pr.data.base?.ref}  Head: ${pr.data.head?.ref}
@@ -155,10 +186,7 @@ try {
 } catch (err) {
   console.error("LLM error:", err);
 
-  const reason =
-    err?.error?.message ||
-    err?.message ||
-    "Unknown error";
+  const reason = err?.error?.message || err?.message || "Unknown error";
 
   md = `
 ⚠️ **LLM test suggestions are temporarily unavailable**
